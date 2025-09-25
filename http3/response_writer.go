@@ -26,7 +26,7 @@ const frameHeaderLen = 16
 
 const maxSmallResponseSize = 4096
 
-type responseWriter struct {
+type ResponseWriter struct {
 	str *Stream
 
 	conn     *Conn
@@ -52,21 +52,21 @@ type responseWriter struct {
 }
 
 var (
-	_ http.ResponseWriter = &responseWriter{}
-	_ http.Flusher        = &responseWriter{}
-	_ Hijacker            = &responseWriter{}
-	_ HTTPStreamer        = &responseWriter{}
+	_ http.ResponseWriter = &ResponseWriter{}
+	_ http.Flusher        = &ResponseWriter{}
+	_ Hijacker            = &ResponseWriter{}
+	_ HTTPStreamer        = &ResponseWriter{}
 	// make sure that we implement (some of the) methods used by the http.ResponseController
 	_ interface {
 		SetReadDeadline(time.Time) error
 		SetWriteDeadline(time.Time) error
 		Flush()
 		FlushError() error
-	} = &responseWriter{}
+	} = &ResponseWriter{}
 )
 
-func newResponseWriter(str *Stream, conn *Conn, isHead bool, logger *slog.Logger) *responseWriter {
-	return &responseWriter{
+func newResponseWriter(str *Stream, conn *Conn, isHead bool, logger *slog.Logger) *ResponseWriter {
+	return &ResponseWriter{
 		str:    str,
 		conn:   conn,
 		header: http.Header{},
@@ -76,11 +76,11 @@ func newResponseWriter(str *Stream, conn *Conn, isHead bool, logger *slog.Logger
 	}
 }
 
-func (w *responseWriter) Header() http.Header {
+func (w *ResponseWriter) Header() http.Header {
 	return w.header
 }
 
-func (w *responseWriter) WriteHeader(status int) {
+func (w *ResponseWriter) WriteHeader(status int) {
 	if w.headerComplete {
 		return
 	}
@@ -122,7 +122,7 @@ func (w *responseWriter) WriteHeader(status int) {
 	}
 }
 
-func (w *responseWriter) sniffContentType(p []byte) {
+func (w *ResponseWriter) sniffContentType(p []byte) {
 	// If no content type, apply sniffing algorithm to body.
 	// We can't use `w.header.Get` here since if the Content-Type was set to nil, we shouldn't do sniffing.
 	_, haveType := w.header["Content-Type"]
@@ -134,7 +134,7 @@ func (w *responseWriter) sniffContentType(p []byte) {
 	}
 }
 
-func (w *responseWriter) Write(p []byte) (int, error) {
+func (w *ResponseWriter) Write(p []byte) (int, error) {
 	bodyAllowed := bodyAllowedForStatus(w.status)
 	if !w.headerComplete {
 		w.sniffContentType(p)
@@ -165,7 +165,7 @@ func (w *responseWriter) Write(p []byte) (int, error) {
 	return w.doWrite(p)
 }
 
-func (w *responseWriter) doWrite(p []byte) (int, error) {
+func (w *ResponseWriter) doWrite(p []byte) (int, error) {
 	if !w.headerWritten {
 		w.sniffContentType(w.smallResponseBuf)
 		if err := w.writeHeader(w.status); err != nil {
@@ -201,7 +201,7 @@ func (w *responseWriter) doWrite(p []byte) (int, error) {
 	return n, nil
 }
 
-func (w *responseWriter) writeHeader(status int) error {
+func (w *ResponseWriter) writeHeader(status int) error {
 	var headers bytes.Buffer
 	enc := qpack.NewEncoder(&headers)
 	if err := enc.WriteField(qpack.HeaderField{Name: ":status", Value: strconv.Itoa(status)}); err != nil {
@@ -243,7 +243,7 @@ func (w *responseWriter) writeHeader(status int) error {
 	return err
 }
 
-func (w *responseWriter) FlushError() error {
+func (w *ResponseWriter) FlushError() error {
 	if !w.headerComplete {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -251,7 +251,7 @@ func (w *responseWriter) FlushError() error {
 	return err
 }
 
-func (w *responseWriter) flushTrailers() {
+func (w *ResponseWriter) flushTrailers() {
 	if w.trailerWritten {
 		return
 	}
@@ -260,7 +260,7 @@ func (w *responseWriter) flushTrailers() {
 	}
 }
 
-func (w *responseWriter) Flush() {
+func (w *ResponseWriter) Flush() {
 	if err := w.FlushError(); err != nil {
 		if w.logger != nil {
 			w.logger.Debug("could not flush to stream", "error", err)
@@ -270,7 +270,7 @@ func (w *responseWriter) Flush() {
 
 // declareTrailer adds a trailer to the trailer list, while also validating that the trailer has a
 // valid name.
-func (w *responseWriter) declareTrailer(k string) {
+func (w *ResponseWriter) declareTrailer(k string) {
 	if !httpguts.ValidTrailerHeader(k) {
 		// Forbidden by RFC 9110, section 6.5.1.
 		w.logger.Debug("ignoring invalid trailer", slog.String("header", k))
@@ -286,7 +286,7 @@ func (w *responseWriter) declareTrailer(k string) {
 // value set. This is possible by adding trailers to the "Trailers" header
 // but never actually setting those names as trailers in the course of handling
 // the request. In that case, this check may save us some allocations.
-func (w *responseWriter) hasNonEmptyTrailers() bool {
+func (w *ResponseWriter) hasNonEmptyTrailers() bool {
 	for trailer := range w.trailers {
 		if _, ok := w.header[trailer]; ok {
 			return true
@@ -296,7 +296,7 @@ func (w *responseWriter) hasNonEmptyTrailers() bool {
 }
 
 // writeTrailers will write trailers to the stream if there are any.
-func (w *responseWriter) writeTrailers() error {
+func (w *ResponseWriter) writeTrailers() error {
 	// promote headers added via "Trailer:" convention as trailers, these can be added after
 	// streaming the status/headers have been written.
 	for k := range w.header {
@@ -331,23 +331,23 @@ func (w *responseWriter) writeTrailers() error {
 	return err
 }
 
-func (w *responseWriter) HTTPStream() *Stream {
+func (w *ResponseWriter) HTTPStream() *Stream {
 	w.hijacked = true
 	w.Flush()
 	return w.str
 }
 
-func (w *responseWriter) wasStreamHijacked() bool { return w.hijacked }
+func (w *ResponseWriter) wasStreamHijacked() bool { return w.hijacked }
 
-func (w *responseWriter) Connection() *Conn {
+func (w *ResponseWriter) Connection() *Conn {
 	return w.conn
 }
 
-func (w *responseWriter) SetReadDeadline(deadline time.Time) error {
+func (w *ResponseWriter) SetReadDeadline(deadline time.Time) error {
 	return w.str.SetReadDeadline(deadline)
 }
 
-func (w *responseWriter) SetWriteDeadline(deadline time.Time) error {
+func (w *ResponseWriter) SetWriteDeadline(deadline time.Time) error {
 	return w.str.SetWriteDeadline(deadline)
 }
 

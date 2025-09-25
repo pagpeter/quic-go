@@ -142,7 +142,7 @@ func (c *ClientConn) setupConn() error {
 
 func (c *ClientConn) handleBidirectionalStreams(streamHijacker func(FrameType, quic.ConnectionTracingID, *quic.Stream, error) (hijacked bool, err error)) {
 	for {
-		str, err := c.conn.conn.AcceptStream(context.Background())
+		str, err := c.conn.Conn.AcceptStream(context.Background())
 		if err != nil {
 			if c.logger != nil {
 				c.logger.Debug("accepting bidirectional stream failed", "error", err)

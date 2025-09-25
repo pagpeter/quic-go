@@ -13,7 +13,7 @@ import (
 )
 
 type testResponseWriter struct {
-	*responseWriter
+	*ResponseWriter
 	buf *bytes.Buffer
 }
 
@@ -62,7 +62,7 @@ func newTestResponseWriter(t *testing.T) *testResponseWriter {
 	str.EXPECT().SetReadDeadline(gomock.Any()).Return(nil).AnyTimes()
 	str.EXPECT().SetWriteDeadline(gomock.Any()).Return(nil).AnyTimes()
 	rw := newResponseWriter(newStream(str, nil, nil, func(r io.Reader, u uint64) error { return nil }), nil, false, nil)
-	return &testResponseWriter{responseWriter: rw, buf: buf}
+	return &testResponseWriter{ResponseWriter: rw, buf: buf}
 }
 
 func TestResponseWriterInvalidStatus(t *testing.T) {

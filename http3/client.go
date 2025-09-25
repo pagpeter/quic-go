@@ -11,8 +11,8 @@ import (
 	"net/textproto"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/quicvarint"
+	"github.com/pagpeter/quic-go"
+	"github.com/pagpeter/quic-go/quicvarint"
 
 	"github.com/quic-go/qpack"
 )

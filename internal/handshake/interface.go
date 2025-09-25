@@ -6,9 +6,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/quic-go/quic-go/internal/monotime"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/wire"
+	"github.com/pagpeter/quic-go/internal/monotime"
+	"github.com/pagpeter/quic-go/internal/protocol"
+	"github.com/pagpeter/quic-go/internal/wire"
 )
 
 var (

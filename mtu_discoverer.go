@@ -1,12 +1,12 @@
 package quic
 
 import (
-	"github.com/quic-go/quic-go/internal/ackhandler"
-	"github.com/quic-go/quic-go/internal/monotime"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/utils"
-	"github.com/quic-go/quic-go/internal/wire"
-	"github.com/quic-go/quic-go/logging"
+	"github.com/pagpeter/quic-go/internal/ackhandler"
+	"github.com/pagpeter/quic-go/internal/monotime"
+	"github.com/pagpeter/quic-go/internal/protocol"
+	"github.com/pagpeter/quic-go/internal/utils"
+	"github.com/pagpeter/quic-go/internal/wire"
+	"github.com/pagpeter/quic-go/logging"
 )
 
 type mtuDiscoverer interface {

@@ -14,12 +14,12 @@ import (
 	mrand "math/rand/v2"
 	"net"
 
-	"github.com/quic-go/quic-go/fuzzing/internal/helper"
-	"github.com/quic-go/quic-go/internal/handshake"
-	"github.com/quic-go/quic-go/internal/protocol"
-	"github.com/quic-go/quic-go/internal/qtls"
-	"github.com/quic-go/quic-go/internal/utils"
-	"github.com/quic-go/quic-go/internal/wire"
+	"github.com/pagpeter/quic-go/fuzzing/internal/helper"
+	"github.com/pagpeter/quic-go/internal/handshake"
+	"github.com/pagpeter/quic-go/internal/protocol"
+	"github.com/pagpeter/quic-go/internal/qtls"
+	"github.com/pagpeter/quic-go/internal/utils"
+	"github.com/pagpeter/quic-go/internal/wire"
 )
 
 var (

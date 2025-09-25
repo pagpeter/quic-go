@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/http3"
+	"github.com/pagpeter/quic-go"
+	"github.com/pagpeter/quic-go/http3"
 	"github.com/stretchr/testify/require"
 )
 

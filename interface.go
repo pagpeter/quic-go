@@ -225,4 +225,6 @@ type ConnectionState struct {
 	Version Version
 	// GSO says if generic segmentation offload is used.
 	GSO bool
+	// ClientHello contains the raw TLS ClientHello bytes for fingerprinting (server-side only).
+	ClientHello []byte
 }

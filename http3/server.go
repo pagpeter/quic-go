@@ -89,6 +89,11 @@ var ServerContextKey = &contextKey{"http3-server"}
 // than its string representation.
 var RemoteAddrContextKey = &contextKey{"remote-addr"}
 
+// RawHeaderFieldsContextKey is a context key for accessing the raw QPACK header fields
+// in the order they were received. This is useful for TLS/HTTP fingerprinting.
+// The associated value will be of type []string (header names in order).
+var RawHeaderFieldsContextKey = &contextKey{"raw-header-fields"}
+
 // listener contains info about specific listener added with addListener
 type listener struct {
 	ln   *QUICListener
@@ -618,6 +623,12 @@ func (s *Server) handleRequest(conn *Conn, str datagramStream, decoder *qpack.De
 	}
 
 	ctx, cancel := context.WithCancel(conn.Context())
+	// Store raw header order for fingerprinting
+	headerOrder := make([]string, 0, len(hfs))
+	for _, h := range hfs {
+		headerOrder = append(headerOrder, h.Name)
+	}
+	ctx = context.WithValue(ctx, RawHeaderFieldsContextKey, headerOrder)
 	req = req.WithContext(ctx)
 	context.AfterFunc(str.Context(), cancel)
 

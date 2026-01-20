@@ -61,6 +61,9 @@ type cryptoSetup struct {
 	aead          *updatableAEAD
 	has1RTTSealer bool
 	has1RTTOpener bool
+
+	// clientHello stores the raw ClientHello bytes for TLS fingerprinting
+	clientHello []byte
 }
 
 var _ CryptoSetup = &cryptoSetup{}
@@ -216,6 +219,16 @@ func (h *cryptoSetup) HandleMessage(data []byte, encLevel protocol.EncryptionLev
 }
 
 func (h *cryptoSetup) handleMessage(data []byte, encLevel protocol.EncryptionLevel) error {
+	// Capture ClientHello for TLS fingerprinting (server-side only)
+	// In TLS 1.3, the handshake message type is the first byte:
+	// 0x01 = ClientHello, 0x02 = ServerHello, etc.
+	if h.perspective == protocol.PerspectiveServer &&
+		encLevel == protocol.EncryptionInitial &&
+		len(data) > 0 && data[0] == 0x01 { // 0x01 is ClientHello
+		h.clientHello = make([]byte, len(data))
+		copy(h.clientHello, data)
+	}
+
 	if err := h.conn.HandleData(encLevel.ToTLSEncryptionLevel(), data); err != nil {
 		return err
 	}
@@ -640,6 +653,7 @@ func (h *cryptoSetup) ConnectionState() ConnectionState {
 	return ConnectionState{
 		ConnectionState: h.conn.ConnectionState(),
 		Used0RTT:        h.used0RTT.Load(),
+		ClientHello:     h.clientHello,
 	}
 }
 

@@ -57,6 +57,8 @@ type ShortHeaderSealer interface {
 type ConnectionState struct {
 	tls.ConnectionState
 	Used0RTT bool
+	// ClientHello contains the raw ClientHello bytes for TLS fingerprinting (server-side only)
+	ClientHello []byte
 }
 
 // EventKind is the kind of handshake event.

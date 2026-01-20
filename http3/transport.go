@@ -28,6 +28,8 @@ type Settings struct {
 	EnableExtendedConnect bool
 	// Other settings, defined by the application
 	Other map[uint64]uint64
+	// RawSettings preserves the order of settings as received, for fingerprinting
+	RawSettings []SettingPair
 }
 
 // RoundTripOpt are options for the Transport.RoundTripOpt method.

@@ -105,11 +105,21 @@ const (
 	settingDatagram = 0x33
 )
 
+// SettingPair represents a single HTTP/3 setting with its ID and value.
+// Used to preserve the order of settings for fingerprinting.
+type SettingPair struct {
+	ID    uint64
+	Value uint64
+}
+
 type settingsFrame struct {
 	Datagram        bool // HTTP Datagrams, RFC 9297
 	ExtendedConnect bool // Extended CONNECT, RFC 9220
 
 	Other map[uint64]uint64 // all settings that we don't explicitly recognize
+
+	// RawSettings preserves the order of settings as received, for fingerprinting
+	RawSettings []SettingPair
 }
 
 func parseSettingsFrame(r io.Reader, l uint64) (*settingsFrame, error) {
@@ -135,6 +145,9 @@ func parseSettingsFrame(r io.Reader, l uint64) (*settingsFrame, error) {
 		if err != nil { // should not happen. We allocated the whole frame already.
 			return nil, err
 		}
+
+		// Capture raw settings in order for fingerprinting
+		frame.RawSettings = append(frame.RawSettings, SettingPair{ID: id, Value: val})
 
 		switch id {
 		case settingExtendedConnect:

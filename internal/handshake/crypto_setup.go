@@ -64,6 +64,10 @@ type cryptoSetup struct {
 
 	// clientHello stores the raw ClientHello bytes for TLS fingerprinting
 	clientHello []byte
+	// clientHelloBuf accumulates ClientHello data across fragments
+	clientHelloBuf    []byte
+	clientHelloLen    int  // expected length from header, -1 if not yet known
+	clientHelloDone   bool // true once we have the complete ClientHello
 }
 
 var _ CryptoSetup = &cryptoSetup{}
@@ -151,16 +155,17 @@ func newCryptoSetup(
 		tracer.UpdatedKeyFromTLS(protocol.EncryptionInitial, protocol.PerspectiveServer)
 	}
 	return &cryptoSetup{
-		initialSealer: initialSealer,
-		initialOpener: initialOpener,
-		aead:          newUpdatableAEAD(rttStats, tracer, logger, version),
-		events:        make([]Event, 0, 16),
-		ourParams:     tp,
-		rttStats:      rttStats,
-		tracer:        tracer,
-		logger:        logger,
-		perspective:   perspective,
-		version:       version,
+		initialSealer:    initialSealer,
+		initialOpener:    initialOpener,
+		aead:             newUpdatableAEAD(rttStats, tracer, logger, version),
+		events:           make([]Event, 0, 16),
+		ourParams:        tp,
+		rttStats:         rttStats,
+		tracer:           tracer,
+		logger:           logger,
+		perspective:      perspective,
+		version:          version,
+		clientHelloLen:   -1, // -1 means length not yet determined
 	}
 }
 
@@ -220,13 +225,11 @@ func (h *cryptoSetup) HandleMessage(data []byte, encLevel protocol.EncryptionLev
 
 func (h *cryptoSetup) handleMessage(data []byte, encLevel protocol.EncryptionLevel) error {
 	// Capture ClientHello for TLS fingerprinting (server-side only)
-	// In TLS 1.3, the handshake message type is the first byte:
-	// 0x01 = ClientHello, 0x02 = ServerHello, etc.
+	// Data may arrive in fragments, so we need to accumulate it
 	if h.perspective == protocol.PerspectiveServer &&
 		encLevel == protocol.EncryptionInitial &&
-		len(data) > 0 && data[0] == 0x01 { // 0x01 is ClientHello
-		h.clientHello = make([]byte, len(data))
-		copy(h.clientHello, data)
+		!h.clientHelloDone {
+		h.accumulateClientHello(data)
 	}
 
 	if err := h.conn.HandleData(encLevel.ToTLSEncryptionLevel(), data); err != nil {
@@ -647,6 +650,38 @@ func (h *cryptoSetup) Get1RTTOpener() (ShortHeaderOpener, error) {
 		return nil, ErrKeysNotYetAvailable
 	}
 	return h.aead, nil
+}
+
+// accumulateClientHello accumulates ClientHello data that may arrive in fragments
+func (h *cryptoSetup) accumulateClientHello(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	// Append data to buffer
+	h.clientHelloBuf = append(h.clientHelloBuf, data...)
+
+	// Check if we have enough data to determine the length
+	if h.clientHelloLen < 0 && len(h.clientHelloBuf) >= 4 {
+		// Check if this is a ClientHello (type 0x01)
+		if h.clientHelloBuf[0] != 0x01 {
+			// Not a ClientHello, clear buffer and mark as done
+			h.clientHelloBuf = nil
+			h.clientHelloDone = true
+			return
+		}
+		// Parse 24-bit length from bytes 1-3
+		h.clientHelloLen = int(h.clientHelloBuf[1])<<16 | int(h.clientHelloBuf[2])<<8 | int(h.clientHelloBuf[3])
+	}
+
+	// Check if we have the complete ClientHello
+	// Total length = 1 (type) + 3 (length field) + length value
+	if h.clientHelloLen >= 0 && len(h.clientHelloBuf) >= 4+h.clientHelloLen {
+		// We have the complete ClientHello
+		h.clientHello = make([]byte, 4+h.clientHelloLen)
+		copy(h.clientHello, h.clientHelloBuf[:4+h.clientHelloLen])
+		h.clientHelloDone = true
+	}
 }
 
 func (h *cryptoSetup) ConnectionState() ConnectionState {
